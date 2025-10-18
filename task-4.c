@@ -1,4 +1,4 @@
-// 2 seven seg
+// 1 seven seg with countdown
 #include <mega32.h>
 #include <delay.h>
 
