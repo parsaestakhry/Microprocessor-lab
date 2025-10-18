@@ -1,33 +1,24 @@
-// 2 seven seg
-
 #include <mega32.h>
 #include <delay.h>
 
-unsigned char x[] = {0x7E,
-                     0x30,
-                     0x6D,
-                     0x79,
-                     0x33,
-                     0x5B,
-                     0x5F,
-                     0x70,
-                     0x7F,
-                     0x7B};
+unsigned char x[] = {0x7E, 0x30, 0x6D, 0x79, 0x33,
+                     0x5B, 0x5F, 0x70, 0x7F, 0x7B};
+
 void main(void)
 {
-    char i, j;
-    DDRA = 0xff;
-    DDRB = 0xff;
+    unsigned char i, j;
+    DDRA = 0xFF; // Set PORTA as output
+    DDRB = 0xFF; // Set PORTB as output
+
     while (1)
     {
-        for (i = 0; i < 10; i++)
+        for (i = 0; i < 10; i++) // Tens digit
         {
-            PORTA = x[i];
-            delay_ms(400);
-            for (j = 0; j < 10; j++)
+            for (j = 0; j < 10; j++) // Ones digit
             {
-                PORTB = x[j];
-                delay_ms(400);
+                PORTA = x[i];  // Tens
+                PORTB = x[j];  // Ones
+                delay_ms(400); // uniform delay
             }
         }
     }
