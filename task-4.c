@@ -21,7 +21,7 @@ void main(void)
     {
         for (i = 0; i < 10; i++)
         {
-            PORTA = x[i];
+            PORTA = x[i];  
             delay_ms(400);
         }
         for (j = 10; j > 0; j--)
