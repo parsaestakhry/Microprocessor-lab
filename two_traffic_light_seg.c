@@ -1,111 +1,119 @@
-#include <mega32.h> // Include header for ATmega32 registers
-#include <delay.h>  // Include delay functions (CodeVisionAVR library)
+#include <mega32.h>
+#include <delay.h>
 
-// ----------------------------
-// Define 7-segment digit patterns (common cathode)
-// Each value corresponds to segments a–g
-// Bit = 1 → LED ON
-// ----------------------------
+// -----------------------------------
+// 7-segment codes for digits 0–9
+// -----------------------------------
 unsigned char seg[10] = {
-    0x3F, // 0
-    0x06, // 1
-    0x5B, // 2
-    0x4F, // 3
-    0x66, // 4
-    0x6D, // 5
-    0x7D, // 6
-    0x07, // 7
-    0x7F, // 8
-    0x6F  // 9
-};
+    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 
-// ----------------------------
-// Define traffic light durations (in seconds)
-// ----------------------------
-#define GREEN_TIME 5  // Green light duration
-#define YELLOW_TIME 2 // Yellow light duration
-#define RED_TIME 5    // Red light duration
+// -----------------------------------
+#define GREEN_TIME 6
+#define YELLOW_TIME 3
+#define RED_TIME 9 // not used directly, but kept for clarity
 
-// ----------------------------
-// Function: show_digit()
-// Displays a number (0–9) on a chosen 7-segment
-// port = 'A' → show on Road A’s 7-segment (PORTC)
-// port = 'B' → show on Road B’s 7-segment (PORTD)
-// ----------------------------
-void show_digit(char port, char num)
+#define LED_GREEN 0b00000001
+#define LED_YELLOW 0b00000010
+#define LED_RED 0b00000100
+
+// -----------------------------------
+void show_digit(char port, signed char num)
 {
+    if (num < 0)
+        num = 0;
+    if (num > 9)
+        num = 9;
+
     if (port == 'A')
-        PORTC = seg[num]; // Output the digit pattern to 7-segment A
+        PORTC = seg[(unsigned char)num];
     else
-        PORTD = seg[num]; // Output the digit pattern to 7-segment B
+        PORTD = seg[(unsigned char)num];
 }
 
-// ----------------------------
-// MAIN FUNCTION
-// ----------------------------
+// -----------------------------------
 void main(void)
 {
-    // ----------------------------
-    // Configure port directions
-    // ----------------------------
-    DDRA = 0xFF; // PORTA → Output (controls LEDs for Road A)
-    DDRB = 0xFF; // PORTB → Output (controls LEDs for Road B)
-    DDRC = 0xFF; // PORTC → Output (7-segment display for Road A)
-    DDRD = 0xFF; // PORTD → Output (7-segment display for Road B)
+    unsigned char phase;
+    signed char t;
 
-    // Infinite loop — keeps repeating the traffic cycle
+    DDRA = 0xFF;
+    DDRB = 0xFF;
+    DDRC = 0xFF;
+    DDRD = 0xFF;
+
+    phase = 0;
+    t = GREEN_TIME;
+
     while (1)
     {
-        signed char t; // Variable for countdown loops
-
-        // ------------------------------------------------------
-        // 1️⃣ ROAD A: GREEN | ROAD B: RED
-        // ------------------------------------------------------
-        PORTA = 0b00000001;               // Road A Green ON (PA0)
-        PORTB = 0b00000100;               // Road B Red ON (PB2)
-        for (t = GREEN_TIME; t >= 0; t--) // Count down from 5 → 0
+        // =============================
+        // SET LED STATES + COUNTDOWN
+        // =============================
+        switch (phase)
         {
-            show_digit('A', t); // Display countdown on Road A 7-seg
-            show_digit('B', 0); // Show 0 on Road B (red light)
-            delay_ms(1000);     // Wait 1 second
+        case 0: // A=Green (6), B=Red (first 6 of 9)
+            PORTA = LED_GREEN;
+            PORTB = LED_RED;
+
+            show_digit('A', t);
+            show_digit('B', t + YELLOW_TIME); // 9..4
+            break;
+
+        case 1: // A=Yellow (3), B=Red (last 3)
+            PORTA = LED_YELLOW;
+            PORTB = LED_RED;
+
+            show_digit('A', t);
+            show_digit('B', t);
+            break;
+
+        case 2: // A=Red (first 6), B=Green (6)
+            PORTA = LED_RED;
+            PORTB = LED_GREEN;
+
+            show_digit('A', t + YELLOW_TIME); // 9..4
+            show_digit('B', t);
+            break;
+
+        case 3: // A=Red (last 3), B=Yellow (3)
+            PORTA = LED_RED;
+            PORTB = LED_YELLOW;
+
+            show_digit('A', t);
+            show_digit('B', t);
+            break;
         }
 
-        // ------------------------------------------------------
-        // 2️⃣ ROAD A: YELLOW | ROAD B: RED
-        // ------------------------------------------------------
-        PORTA = 0b00000010;                // Road A Yellow ON (PA1)
-        PORTB = 0b00000100;                // Road B Red ON (PB2)
-        for (t = YELLOW_TIME; t >= 0; t--) // Count down from 2 → 0
-        {
-            show_digit('A', t); // Display countdown on Road A
-            show_digit('B', 0); // Keep Road B showing 0
-            delay_ms(1000);     // Wait 1 second
-        }
+        // 🔹 SPEED CONTROL: smaller value = faster
+        delay_ms(500); // was 1000 → now 5x faster
 
-        // ------------------------------------------------------
-        // 3️⃣ ROAD A: RED | ROAD B: GREEN
-        // ------------------------------------------------------
-        PORTA = 0b00000100;               // Road A Red ON (PA2)
-        PORTB = 0b00000001;               // Road B Green ON (PB0)
-        for (t = GREEN_TIME; t >= 0; t--) // Count down from 5 → 0
-        {
-            show_digit('A', 0); // Show 0 for Road A (red)
-            show_digit('B', t); // Display countdown on Road B
-            delay_ms(1000);     // Wait 1 second
-        }
+        t--;
 
-        // ------------------------------------------------------
-        // 4️⃣ ROAD A: RED | ROAD B: YELLOW
-        // ------------------------------------------------------
-        PORTA = 0b00000100;                // Road A Red ON (PA2)
-        PORTB = 0b00000010;                // Road B Yellow ON (PB1)
-        for (t = YELLOW_TIME; t >= 0; t--) // Count down from 2 → 0
+        // =============================
+        // PHASE TRANSITION
+        // =============================
+        if (t == 0)
         {
-            show_digit('A', 0); // Road A stays red (shows 0)
-            show_digit('B', t); // Display countdown on Road B
-            delay_ms(1000);     // Wait 1 second
+            if (phase == 0)
+            {
+                phase = 1;
+                t = YELLOW_TIME;
+            }
+            else if (phase == 1)
+            {
+                phase = 2;
+                t = GREEN_TIME;
+            }
+            else if (phase == 2)
+            {
+                phase = 3;
+                t = YELLOW_TIME;
+            }
+            else if (phase == 3)
+            {
+                phase = 0;
+                t = GREEN_TIME;
+            }
         }
-
-        // After yellow, loop repeats — switching sides again
     }
 }
