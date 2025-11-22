@@ -1,6 +1,6 @@
 /****************************************************
- * Measure Room Temperature using LM35 & ATmega32
- * Compiler: CodeVisionAVR
+ * LM35 Temperature Display (Clean Version)
+ * ATmega32 - CodeVisionAVR
  ****************************************************/
 
 #include <mega32.h>
@@ -8,54 +8,62 @@
 #include <delay.h>
 #include <stdio.h>
 
-#define ADC_CHANNEL 0 // LM35 connected to ADC0 (PA0)
-#define VREF 5.0      // Reference voltage
+#define ADC_CHANNEL 0 // LM35 on ADC0 (PA0)
 
 #asm
-.equ __lcd_port = 0x18
+.equ __lcd_port = 0x12
 #endasm
 
-    // Function to initialize ADC
     void ADC_Init(void)
 {
-    ADMUX = 0x40;  // AVCC as reference, ADC0 selected
-    ADCSRA = 0x87; // Enable ADC, prescaler=128 (for 16MHz → 125kHz ADC clock)
+    // AVCC as reference, ADC0 selected
+    ADMUX = 0x40;
+
+    // Enable ADC, prescaler = 128
+    ADCSRA = 0x87;
+
+    // PA0 as input, no pull-up
+    DDRA &= ~(1 << 0);
+    PORTA &= ~(1 << 0);
 }
 
-// Function to read ADC value
 unsigned int ADC_Read(unsigned char channel)
 {
-    ADMUX = (ADMUX & 0xF0) | (channel & 0x0F); // Select ADC channel
-    ADCSRA |= (1 << ADSC);                     // Start conversion
+    ADMUX = (ADMUX & 0xF0) | (channel & 0x0F);
+
+    ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC))
-        ;        // Wait for conversion to finish
-    return ADCW; // Return 10-bit result
+        ;
+
+    return ADCW;
 }
 
 void main(void)
 {
     unsigned int adc_value;
+    unsigned long temp_x100;
     unsigned int temp_int, temp_frac;
-    char lcd_buffer[16];
+    char lcd_buffer[17];
 
-    lcd_init(16); // Initialize 16x2 LCD
-    ADC_Init();   // Initialize ADC
+    lcd_init(16);
+    ADC_Init();
 
     lcd_clear();
-    lcd_gotoxy(0, 0);
-    lcd_putsf("Room Temp Meter"); // Static title
 
     while (1)
     {
         adc_value = ADC_Read(ADC_CHANNEL);
-        // Convert ADC to temperature in °C with 2 decimal precision
-        temp_int = (adc_value * 500) / 1024;           // Integer part (°C * 100)
-        temp_frac = ((adc_value * 5000) / 1024) % 100; // Fractional part (2 decimals)
 
-        lcd_gotoxy(0, 1);
-        sprintf(lcd_buffer, "Temp: %u.%02u C", temp_int, temp_frac); // Manually format
+        // Convert ADC ? °C * 100
+        temp_x100 = (unsigned long)adc_value * 50000UL / 1024;
+
+        temp_int = temp_x100 / 100;
+        temp_frac = temp_x100 % 100;
+
+        lcd_gotoxy(0, 0);
+        sprintf(lcd_buffer, "Temp: %u.%02u C", temp_int, temp_frac);
         lcd_puts(lcd_buffer);
 
-        delay_ms(1000);
+        delay_ms(500);
     }
 }
