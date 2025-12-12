@@ -19,7 +19,7 @@
 // 8 MHz / 256 = 31250 Hz
 // 1 second => OCR1A = 31250 - 1 = 31249
 // ideal would be 31249 for true 8MHz
-#define OCR1A_1HZ 29947   // 31249 * (230/240) ≈ 29947
+#define OCR1A_1HZ 30249   // 31249 * (230/240) ≈ 29947
 
 volatile unsigned char hh = 0;
 volatile unsigned char mm = 0;
